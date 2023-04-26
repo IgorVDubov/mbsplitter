@@ -1,66 +1,56 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import asyncio
-import os.path
 import sys
-from typing import List
 
+from gather.mylib import logger as loggerLib
 from loguru import logger
 
-import logger as loggerLib
+if sys.platform == 'win32':                 # Если запускаем из под win   
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())   
 
-if sys.platform == 'win32':
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  #Если запускаем из под win    
 
-import importlib
+import modbusconfig as mb_config
 
-import globals
-
-from splitter import scadaconfig as scada_config
-import channels.channels
-from channels.channelbase import channel_base_init
-from exchangeserver import MBServerAdrMapInit, ModbusExchangeServer
-from mainpool import MainPool
-from mutualcls import (ChannelSubscriptionsList, Data, EList,
-                       SubscriptChannelArg, WSClient)
-from sourcepool import SourcePool
+from gather.sourcepool import SourcePool
+from gather.interfaces.modbus_server.server import MBServer
+from gather.mainloop import MainLoop
 
 
 def init():
-    loop=asyncio.new_event_loop()
+    loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    if len(modules:=scada_config.module_list):
-        sourcePool=SourcePool(modules,loop)
+    if len(modules := mb_config.module_list):
+        source_pool = SourcePool(modules, loop)
     else:
-        sourcePool=None 
-    dbQuie=None
-    channel_base=channel_base_init(scada_config.channels_config, dbQuie)
-    newAddrMap1, exchangeBindings1 = MBServerAdrMapInit(channel_base,scada_config.mb_server1_addr_map)
-    newAddrMap2, exchangeBindings2 = MBServerAdrMapInit(channel_base,scada_config.mb_server2_addr_map)
-    ModbusExchServer1=ModbusExchangeServer(newAddrMap1, globals.MBServer1_params['host'], globals.MBServer1_params['port'],loop=loop)
-    ModbusExchServer2=ModbusExchangeServer(newAddrMap2, globals.MBServer2_params['host'], globals.MBServer2_params['port'],loop=loop)
-    print ('Source clients')
-    print (sourcePool.str_clients())
-    print ('Sources')
-    print (sourcePool)
-    print(f'Modbus Exchange Server 1: {globals.MBServer1_params["host"]}, {globals.MBServer1_params["port"]}')
-    print('ExchangeBindings 1 ')
-    print(exchangeBindings1)
-    print(f'Modbus Exchange Server 2: {globals.MBServer2_params["host"]}, {globals.MBServer2_params["port"]}')
-    print('ExchangeBindings 2')
-    print(exchangeBindings2)
+        raise Exception('No source modules in modbusconfig!') 
+    modbus_exchange_server_1 = MBServer(
+                            source_pool.sources,
+                            mb_config.modbus_server_1['host'],
+                            mb_config.modbus_server_1['port'])
+    modbus_exchange_server_2 = MBServer(
+                            source_pool.sources,
+                            mb_config.modbus_server_2['host'],
+                            mb_config.modbus_server_2['port'])
     
-    mainPool=MainPool(loop, sourcePool, channel_base, ModbusExchServer1, exchangeBindings1, ModbusExchServer2, exchangeBindings2)
-    logger.info ('init done')
-    return mainPool
-
+    print('Sources')
+    print(source_pool)
+    print(f'Modbus Exchange Server1: {mb_config.modbus_server_1["host"]}:{mb_config.modbus_server_1["port"]}')
+    print(f'Modbus Exchange Server2: {mb_config.modbus_server_2["host"]}:{mb_config.modbus_server_2["port"]}')
+    
+    main_loop = MainLoop(loop, 
+                         source_pool, 
+                         modbus_exchange_server_1,
+                         modbus_exchange_server_2,
+                         0.5)
+    logger.info('init done')
+    return main_loop
 
 def main():
     loggerLib.loggerInit('ERROR')
     logger.info('Starting........')
-    mainPool=init()
-    mainPool.start()
-    
+    main_loop = init()
+    main_loop.start()
 
 if __name__=='__main__':
     main()
