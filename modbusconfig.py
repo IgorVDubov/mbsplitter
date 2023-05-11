@@ -14,7 +14,7 @@ period->float: период опроса в сек
 module_list = [
     {'type': SourceTypes.MODBUS_TCP, 'ip': '172.19.10.7', 'port': 502, 'unit': 0x1,
         'addr_pool': Formats.IR, 'address': 0, 'count': 1, 'period': 0.5},
-    {'type': SourceTypes.MODBUS_TCP, 'ip': '127.0.0.1', 'port': 502, 'unit': 0x1,
+    {'type': SourceTypes.MODBUS_TCP, 'ip': '172.19.10.7', 'port': 502, 'unit': 0x1,
         'addr_pool': Formats.DI, 'address': 0, 'count': 8, 'period': 0.5},
 ]
 

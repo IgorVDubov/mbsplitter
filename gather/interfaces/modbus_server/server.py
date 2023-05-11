@@ -204,7 +204,8 @@ class ChannelsRequestHandler(ModbusConnectedRequestHandler):
         elif request.function_code == 15:
             set_value = request.values
         else:
-            set_value = None
+            return super().execute(request, *addr)
+            #set_value = None
         asyncio.create_task( source.write(set_value))
 
         return super().execute(request, *addr)
