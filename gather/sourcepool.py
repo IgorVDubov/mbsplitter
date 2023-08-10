@@ -1,5 +1,6 @@
 import asyncio
 from time import time
+from typing import TypedDict
 
 from .consts import SourceTypes, Formats
 from .interfaces.modbus_client.aclient import AsyncModbusClient, ABaseModbusClient
@@ -77,24 +78,31 @@ class Source:
     def __str__(self):
         return f' {id(self)}    id:{self.id}, period:{self.period}s, conn_id:{id(self.connection.client)} {self.connection}'
 
+class ClientSrcIndex(TypedDict):
+    client:AsyncModbusClient
+    source: list[Source]
+    
 
 class SourcePool(object):
     clients: list[ABaseModbusClient]
     sources: list[Source]
     loop: asyncio.AbstractEventLoop
     reader_tasks: list[asyncio.Task]
+    clients_sources: ClientSrcIndex
     
-    def __init__(self, modules, loop=None):
+    def __init__(self, modules, period, loop=None):
         self.clients = []
         self.sources = []
         self.reader_tasks = []
+        self.clients_sources = {}
         # self.results=[]
         for module in modules:
             source = Source(module, self.clients)
             client = source.get_client()
             if client and client not in self.clients:
                 self.clients.append(client)
-            # TODO ????? помещать сюда только если успешный инит клиента и тест чтения по адресу
+                self.clients_sources[client]=[]
+            self.clients_sources[client].append(source)
             self.sources.append(source)
         if loop is None:
             self.loop = asyncio.get_event_loop()
@@ -104,16 +112,17 @@ class SourcePool(object):
             self.loop.create_task(self.start_source_clients())
         else:
             self.loop.run_until_complete(self.start_source_clients())
-        self.setTasks()
+        self.set_tasks(period)
 
     async def start_source_clients(self):
         for client in self.clients:
             logger.info(f'start Sourse client {client}')
-            await client.start()
+            self.loop.create_task(client.start())
 
     async def close_sources(self):
         for client in self.clients:
-            await client.close()
+            client.close()
+            await asyncio.sleep(0)
 
     async def stop(self):
         logger.info('get stop signal, stopping tasks:')
@@ -138,14 +147,49 @@ class SourcePool(object):
         for source in self.sources:
             s += str(source)+'\n'
         return s[:-1]
-
-    def setTasks(self):
+    
+    def set_tasks(self, period):
+        for client in self.clients_sources.keys():
+            self.loop.create_task(self.client_reader(
+                client, period), name='client_reader_'+str(id(client)))
+    
+    def setTasksOLD(self):
         for source in self.sources:
             self.reader_tasks.append(self.loop.create_task(
                                         self.loopSourceReader(
                                                 source),
                                                 name='SourceReader_'+str(source.id)))
-
+    async def client_reader(self, client, period):
+        logger.debug(
+            f'start source_reader client:{client.ip}')
+        while True:
+            try:
+                try:
+                    before = time()
+                    for source in self.clients_sources[client]:
+                         await  asyncio.gather(source.read())
+                    # await asyncio.gather(*(source.update() for source in self.clients_sources[client]))
+                except asyncio.exceptions.TimeoutError as ex:
+                    print(
+                        f"!!!!!!!!!!!!!!!!!!! asyncio.exceptions.TimeoutError for {source.id}:", ex)
+                
+                await asyncio.sleep(0)
+                delay =period - (time() - before)
+                if delay <= 0:
+                    logger.warning(
+                        f'Not enough time for source read, client id:{client.ip}, delay={delay}')
+                        # f'Not enough time for source read, source id:{source.id}, delay={delay}')
+                    delay = 0
+                await asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                print(
+                    f"Got CancelledError close client connection{id(client)}")
+                if client.connected:
+                    client.close()
+                break
+        
+        # await asyncio.sleep(1)
+        
     async def loopSourceReader(self, source: Source):
         logger.debug(
             f'start loopReader client:{source.id}, period:{source.period}')
@@ -154,26 +198,16 @@ class SourcePool(object):
                 before = time()
                 try:
                     self.result = await source.read()
-                    # self.result = [1]
-                    # print(f'after read {source.id} def result:{self.result} connected={source.connected}')
 
                 except asyncio.exceptions.TimeoutError as ex:
                     print(
                         f"!!!!!!!!!!!!!!!!!!! asyncio.exceptions.TimeoutError for {source.id}:", ex)
-                # except ModbusExceptions.ModbusException as ex:                                            #TODO взять exception от клиента
-                #     print(f"!!!!!!!!!!!!!!!!!!! ModbusException in looper for {client.id} :",ex)
 
                 delay = source.period-(time()-before)
                 if delay <= 0:
                     logger.warning(
                         f'Not enough time for source read, source id:{source.id}, delay={delay}')
                 await asyncio.sleep(delay)
-            # except asyncio.CancelledError:
-            #     print(
-            #         f"Got CancelledError close client connection{id(source.connection)}")
-            #     if source.connection.connected:
-            #         await source.connection.close()
-            #     break
 
     def readAllOneTime(self):
         for source in self.sources:

@@ -21,17 +21,19 @@ def init():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     if len(modules := mb_config.module_list):
-        source_pool = SourcePool(modules, loop)
+        source_pool = SourcePool(modules, mb_config.POLL_PERIOD, loop)
     else:
         raise Exception('No source modules in modbusconfig!') 
     modbus_exchange_server_1 = MBServer(
                             source_pool.sources,
                             mb_config.modbus_server_1['host'],
-                            mb_config.modbus_server_1['port'])
+                            mb_config.modbus_server_1['port'], 
+                            loop=loop)
     modbus_exchange_server_2 = MBServer(
                             source_pool.sources,
                             mb_config.modbus_server_2['host'],
-                            mb_config.modbus_server_2['port'])
+                            mb_config.modbus_server_2['port'], 
+                            loop=loop)
     
     print('Sources')
     print(source_pool)
@@ -42,7 +44,7 @@ def init():
                          source_pool, 
                          modbus_exchange_server_1,
                          modbus_exchange_server_2,
-                         0.5)
+                         mb_config.POLL_PERIOD)
     logger.info('init done')
     return main_loop
 

@@ -16,9 +16,7 @@ import asyncio
 
 from pymodbus.datastore import (ModbusSequentialDataBlock, ModbusServerContext,
                                 ModbusSlaveContext)
-from pymodbus.server.async_io import ModbusTcpServer, ModbusConnectedRequestHandler
-from pymodbus.constants import Defaults
-from pymodbus.pdu import ExceptionResponse, ModbusExceptions
+from pymodbus.server.async_io import ModbusTcpServer, ModbusServerRequestHandler
 
 
 from ...sourcepool import SourcePool, Source
@@ -43,8 +41,11 @@ class ModBusServer(ModbusTcpServer):
         # self.id_map: dict = self.addr_map_2_id_map(self.addr_map)
         super().__init__(self.context, address=(host, port),
                         # handler = ModbusConnectedRequestHandler
-                        handler=ChannelsRequestHandler
                          )
+        self.handle_new_connection = self.my_handle_new_connection
+    
+    def my_handle_new_connection(self):
+        return ChannelsRequestHandler(self)
     
     def mb_server_context_init(self, addr_map: dict) -> ModbusServerContext:
         '''
@@ -167,7 +168,7 @@ class ModBusServer(ModbusTcpServer):
         self.context[unit].setValues(func, addr, val_list)
         
 
-class ChannelsRequestHandler(ModbusConnectedRequestHandler):
+class ChannelsRequestHandler(ModbusServerRequestHandler):
     '''
     Write functions with handler to send values to ChannelBase
     '''
@@ -213,8 +214,8 @@ class ChannelsRequestHandler(ModbusConnectedRequestHandler):
 
 class MBServer(ModBusServer):
     def __init__(self, sources: list[Source], host, port, **kwargs):
-        self.loop: asyncio.AbstractEventLoop = kwargs.get(
-            "loop") or asyncio.get_event_loop()
+        # self.loop: asyncio.AbstractEventLoop = kwargs.get(
+        #     "loop") or asyncio.get_event_loop()
         addr_map: list = self.create_address_map(sources)
         # self.source_pool: SourcePool = source_pool
         # self.source_cache: dict = dict((s.id, s)
@@ -290,4 +291,4 @@ class MBServer(ModBusServer):
     
     def prepare_start_task(self):
         logger.info('create modbus server start task ')
-        self.loop.create_task(self.start(), name='modbus_Server')
+        asyncio.get_event_loop().create_task(self.start(), name='modbus_Server')

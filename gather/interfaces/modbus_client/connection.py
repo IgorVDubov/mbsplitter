@@ -51,8 +51,8 @@ class AModbusConnection():
     async def start(self):
         await self.client.start()
 
-    async def close(self):
-        await self.client.close()
+    def close(self):
+        self.client.close()
         
     def _format_result(self, result):
         raise NotImplemented

@@ -21,3 +21,5 @@ module_list = [
 
 modbus_server_1 = {'host': '127.0.0.1', 'port': 510}
 modbus_server_2 = {'host': '127.0.0.1', 'port': 511}
+
+POLL_PERIOD = 0.5
