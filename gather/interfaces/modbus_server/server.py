@@ -197,7 +197,7 @@ class ChannelsRequestHandler(ModbusServerRequestHandler):
         # сначала выполнить execute посмотреть на валидвцию и ошибки
         # и потом  если ок - channel.set_channel_arg_name
         source: Source = self.server.get_source(
-            request.function_code, request.address, request.unit_id)
+            request.function_code, request.address, request.slave_id)
 
         if request.function_code in [5, 6]:
             set_value = request.value
