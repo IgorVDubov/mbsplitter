@@ -24,12 +24,12 @@ from ...myexceptions import ModbusExchangeServerException
 
 MB_FUNCS={Formats.CO: 1, Formats.DI: 2, Formats.HR: 3, Formats.IR: 4}
 
-async def mb_server_init(addr_map,
+async def mb_server_init(sources,
                          channel_base,
                          serverParams,
                          **kwargs
                          ):
-    return  MBServer(addr_map, channel_base, serverParams, **kwargs)  
+    return  MBServer(sources, channel_base, serverParams, **kwargs)  
 
 class ModBusServer(ModbusTcpServer):
     def __init__(self, addr_map, sources, host, port, **kwargs):
@@ -234,13 +234,15 @@ class MBServer(ModBusServer):
     def create_address_map(sources: list[Source]):
         addr_map = []
         for source in sources:
+            unit = source.connection.unit if source.connection.map_unit is None else source.connection.map_unit
+            address = source.connection.address if source.connection.map_address is None else source.connection.map_address
             exist_unit = next((unit_rec['unit'] for unit_rec in addr_map if unit_rec.get(
-                'unit') == source.connection.unit), None)
+                'unit') == unit), None)
             if not exist_unit:
-                addr_map.append({'unit': source.connection.unit, 'map': {
+                addr_map.append({'unit': unit, 'map': {
                                 'co': [], 'di': [], 'ir': [], 'hr': [], }})
             for unit_map in addr_map:
-                if unit_map['unit'] == source.connection.unit:
+                if unit_map['unit'] == unit:
                     match source.addr_pool:
                         case Formats.CO: map_key = 'co'
                         case Formats.DI: map_key = 'di'
@@ -249,7 +251,7 @@ class MBServer(ModBusServer):
                         case _: raise Exception(f'no such addr pool {source.addr_pool}')
 
                     unit_map['map'][map_key].append({'id': source.id,
-                                                     'addr': source.connection.address,
+                                                     'addr': address,
                                                      'length': source.connection.reg_count})
         return addr_map
 

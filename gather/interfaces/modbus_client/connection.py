@@ -25,12 +25,16 @@ class AModbusConnection():
                  address: int,
                  reg_count: int,
                  unit: int,
+                 map_unit=None,
+                 map_address=None,
                  bytes_order=None):
         self.client = client
         self.addr_pool = addr_pool
         self.address = address
         self.reg_count = reg_count
         self.unit = unit
+        self.map_unit = map_unit
+        self.map_address = map_address
         self.format = format
         if bytes_order is None:
             self.bytes_order = None

@@ -21,7 +21,7 @@ class Source:
     def __init__(self, module: dict, exist_clients: list[ABaseModbusClient | None]):
         try:
             self.id = NewID()
-            self.period = module.get('period')
+            
             self.result = None
             self.addr_pool = module.get('addr_pool')
             if module['type'] == SourceTypes.MODBUS_TCP:
@@ -40,6 +40,8 @@ class Source:
                                                     module['address'],
                                                     module['count'],
                                                     module['unit'],
+                                                    module.get('map_unit'),
+                                                    module.get('map_address')
                                                     )
             else:
                 raise myexceptions.ConfigException(
@@ -79,7 +81,7 @@ class Source:
         return self.connection.client
     
     def __str__(self):
-        return f' {id(self)}    id:{self.id}, period:{self.period}s, conn_id:{id(self.connection.client)} {self.connection}'
+        return f' {id(self)}    id:{self.id}, conn_id:{id(self.connection.client)} {self.connection}'
 
 class ClientSrcIndex(TypedDict):
     client: AsyncModbusClient
