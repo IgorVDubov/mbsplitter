@@ -18,13 +18,18 @@ from pymodbus.datastore import (ModbusSequentialDataBlock, ModbusServerContext,
                                 ModbusSlaveContext)
 from pymodbus.server.async_io import ModbusTcpServer, ModbusServerRequestHandler
 
-
 from ...sourcepool import SourcePool, Source
 from ...consts import Formats
 from ...myexceptions import ModbusExchangeServerException
 
 MB_FUNCS={Formats.CO: 1, Formats.DI: 2, Formats.HR: 3, Formats.IR: 4}
 
+async def mb_server_init(addr_map,
+                         channel_base,
+                         serverParams,
+                         **kwargs
+                         ):
+    return  MBServer(addr_map, channel_base, serverParams, **kwargs)  
 
 class ModBusServer(ModbusTcpServer):
     def __init__(self, addr_map, sources, host, port, **kwargs):
@@ -35,13 +40,15 @@ class ModBusServer(ModbusTcpServer):
         self.source_cache: dict = dict((s.id, s)
                                        for s in self.sources)
 
-        # Defaults.ZeroMode=True
+        Defaults.ZeroMode=True
+        
         self.context: ModbusServerContext = self.mb_server_context_init(
             addr_map)
         # self.id_map: dict = self.addr_map_2_id_map(self.addr_map)
-        super().__init__(self.context, address=(host, port),
-                        # handler = ModbusConnectedRequestHandler
-                         )
+        super().__init__(self.context, address=(host, port),)
+        # super().__init__(self.context, address=(host, port),
+        #                 # handler = ModbusConnectedRequestHandler
+        #                  )
         self.handle_new_connection = self.my_handle_new_connection
     
     def my_handle_new_connection(self):
@@ -64,7 +71,7 @@ class ModBusServer(ModbusTcpServer):
         start_addr = 0x01
         slaves: dict[int, ModbusSlaveContext] = dict()
         for unit in addr_map:
-            slaveContext = ModbusSlaveContext(zero_mode=True)
+            slaveContext = ModbusSlaveContext()
             co = unit['map'].get('co', None)
             di = unit['map'].get('di', None)
             hr = unit['map'].get('hr', None)

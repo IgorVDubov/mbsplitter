@@ -13,7 +13,7 @@ if sys.platform == 'win32':                 # Если запускаем из �
 import modbusconfig as mb_config
 
 from gather.sourcepool import SourcePool
-from gather.interfaces.modbus_server.server import MBServer
+from gather.interfaces.modbus_server.server import MBServer, mb_server_init
 from gather.mainloop import MainLoop
 
 
@@ -24,16 +24,16 @@ def init():
         source_pool = SourcePool(modules, mb_config.POLL_PERIOD, loop)
     else:
         raise Exception('No source modules in modbusconfig!')
-    modbus_exchange_server_1 = MBServer(
+    modbus_exchange_server_1 = loop.run_until_complete(mb_server_init(
         source_pool.sources,
         mb_config.modbus_server_1['host'],
         mb_config.modbus_server_1['port'],
-        loop=loop)
-    modbus_exchange_server_2 = MBServer(
+        loop=loop))
+    modbus_exchange_server_2 = loop.run_until_complete(mb_server_init(
         source_pool.sources,
         mb_config.modbus_server_2['host'],
         mb_config.modbus_server_2['port'],
-        loop=loop)
+        loop=loop))
 
     print('Sources')
     print(source_pool)

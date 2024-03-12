@@ -81,7 +81,11 @@ class Source:
 class ClientSrcIndex(TypedDict):
     client:AsyncModbusClient
     source: list[Source]
-    
+
+async def init_source(module, clients):
+    source =   Source(module, clients)
+    await asyncio.sleep(0)
+    return source
 
 class SourcePool(object):
     clients: list[ABaseModbusClient]
@@ -90,14 +94,15 @@ class SourcePool(object):
     reader_tasks: list[asyncio.Task]
     clients_sources: ClientSrcIndex
     
-    def __init__(self, modules, period, loop=None):
+    def __init__(self, modules, period, loop: asyncio.AbstractEventLoop=None):
         self.clients = []
         self.sources = []
         self.reader_tasks = []
         self.clients_sources = {}
         # self.results=[]
         for module in modules:
-            source = Source(module, self.clients)
+            # source =  loop.run_until_complete(Source(module, self.clients))
+            source = loop.run_until_complete(init_source(module, self.clients))
             client = source.get_client()
             if client and client not in self.clients:
                 self.clients.append(client)
