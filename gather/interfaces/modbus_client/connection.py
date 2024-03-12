@@ -1,4 +1,3 @@
-import asyncio
 
 from . import aclient
 from ...consts import Formats
@@ -42,7 +41,7 @@ class AModbusConnection():
         # logger.debug(f"Client ip:{ self.ip}, addr:{address} connection:{self.connection.connected} ")
 
     def __str__(self):
-        return f'''ip:{self.client.ip}, port:{self.client.port}, unit:{self.unit}, {["", "CO", "DI", "HR", "IR"][self.addr_pool]}:address:{self.address}, regCount:{self.reg_count}'''
+        return f'''ip:{self.client.ip}, port:{self.client.port}, unit:{self.unit}, ["", "CO", "DI", "HR", "IR"]{[self.addr_pool]}:address:{self.address}, regCount:{self.reg_count}'''
 
     @property
     def connected(self) -> bool:

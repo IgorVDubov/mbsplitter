@@ -6,11 +6,12 @@ from pymodbus.pdu import ExceptionResponse
 
 from ... import myexceptions
 
+
 class ABaseModbusClient(ABC):
     ip: str
     port: int
 
-    def start(self): ...
+    async def start(self): ...
     def close(self): ...
     @property
     def connected(self) -> bool: ...
@@ -37,7 +38,7 @@ class AsyncModbusClient(ABaseModbusClient):
             f'Client ip={self.ip}:{self.port} connection {self.connection.connected}')
 
     async def close(self):
-        await self.connection.close()
+        self.connection.close()
         logger.info(
             f'Client ip={self.ip}:{self.port} connection {self.connection.connected}')
 

@@ -64,7 +64,7 @@ class ModBusServer(ModbusTcpServer):
         start_addr = 0x01
         slaves: dict[int, ModbusSlaveContext] = dict()
         for unit in addr_map:
-            slaveContext = ModbusSlaveContext()
+            slaveContext = ModbusSlaveContext(zero_mode=True)
             co = unit['map'].get('co', None)
             di = unit['map'].get('di', None)
             hr = unit['map'].get('hr', None)

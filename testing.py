@@ -1,5 +1,5 @@
 import asyncio
-from modbusconfig import module_list, modbus_server_1
+from modbusconfig import source_list, modbus_server_1
 
 from gather.interfaces.modbus_client.connection import AModbusConnection
 from gather.interfaces.modbus_client.aclient import AsyncModbusClient
@@ -89,8 +89,8 @@ if __name__=='__main__':
     
     # asyncio.run(test_connection(module['ip'], module['port'], module['addr_pool'], module['address'], module['count'], module['unit'], ))
     # asyncio.run(test_source(module))
-    # asyncio.run(test_source_pool(module_list))
-    asyncio.run(test_exchange_server(module_list, modbus_server_1))
+    # asyncio.run(test_source_pool(source_list))
+    asyncio.run(test_exchange_server(source_list, modbus_server_1))
     MBServerAdrMap=[
             {'unit':0x1, 
                 'map':{
