@@ -40,7 +40,6 @@ class ModBusServer(ModbusTcpServer):
         self.source_cache: dict = dict((s.id, s)
                                        for s in self.sources)
 
-        Defaults.ZeroMode=True
         
         self.context: ModbusServerContext = self.mb_server_context_init(
             addr_map)
