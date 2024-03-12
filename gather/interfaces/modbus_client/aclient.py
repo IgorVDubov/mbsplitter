@@ -37,7 +37,7 @@ class AsyncModbusClient(ABaseModbusClient):
         logger.info(
             f'Client ip={self.ip}:{self.port} connection {self.connection.connected}')
 
-    async def close(self):
+    def close(self):
         self.connection.close()
         logger.info(
             f'Client ip={self.ip}:{self.port} connection {self.connection.connected}')

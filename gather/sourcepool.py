@@ -67,6 +67,9 @@ class Source:
         except myexceptions.SourceException as e:
             self.error = e
             self.result = None
+        except Exception as e:
+            logger.error(f'[Source][read] exception {e}')
+            raise e
         return self.result
     
     async def write(self, value):
@@ -169,15 +172,12 @@ class SourcePool(object):
             f'start source_reader client:{client.ip}')
         while True:
             try:
-                try:
-                    before = time()
-                    for source in self.clients_sources[client]:
-                         await  asyncio.gather(source.read())
-                    # await asyncio.gather(*(source.update() for source in self.clients_sources[client]))
-                except asyncio.exceptions.TimeoutError as ex:
-                    print(
-                        f"!!!!!!!!!!!!!!!!!!! asyncio.exceptions.TimeoutError for {source.id}:", ex)
-                
+                before = time()
+                for source in self.clients_sources[client]:
+                    async with asyncio.timeout(period):
+                        await source.read()
+                    #  await asyncio.gather(source.read())
+                # await asyncio.gather(*(source.update() for source in self.clients_sources[client]))
                 await asyncio.sleep(0)
                 delay =period - (time() - before)
                 if delay <= 0:
@@ -186,14 +186,15 @@ class SourcePool(object):
                         # f'Not enough time for source read, source id:{source.id}, delay={delay}')
                     delay = 0
                 await asyncio.sleep(delay)
+            except TimeoutError as ex:
+                print(
+                    f"!!!!!!!!!!!!!!!!!!! asyncio.exceptions.TimeoutError for {source.id}:", ex)
             except asyncio.CancelledError:
                 print(
                     f"Got CancelledError close client connection{id(client)}")
-                if client.connected:
-                    client.close()
+                # if client.connected:
+                #     client.close()
                 break
-        
-        # await asyncio.sleep(1)
         
     async def loopSourceReader(self, source: Source):
         logger.debug(
