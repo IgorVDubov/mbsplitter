@@ -185,7 +185,7 @@ class SourcePool(object):
             except TimeoutError as ex:
                 logger.error(
                     f"[SourcePool][client_reader]\
-                        TimeoutError for {client.ip}:{client.port}", ex)
+                        TimeoutError for {client.ip}:{client.port} reading addr{source.connection.address} unti:{source.connection.unit}", ex)
             except asyncio.CancelledError:
                 logger.error(
                     f"[SourcePool][client_reader]Got CancelledError close client connection {client.ip}:{client.port}")
