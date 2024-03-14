@@ -170,8 +170,8 @@ class SourcePool(object):
             try:
                 before = time()
                 for source in self.clients_sources[client]:
-                    async with asyncio.timeout(period):
-                        await source.read()
+                    # async with asyncio.timeout(period):
+                    await source.read()
                     #  await asyncio.gather(source.read())
                 # await asyncio.gather(*(source.update() for source in self.clients_sources[client]))
                 await asyncio.sleep(0)
@@ -184,16 +184,19 @@ class SourcePool(object):
                 await asyncio.sleep(delay)
             except TimeoutError as ex:
                 logger.error(
-                    f"[SourcePool][client_reader]\
-                        TimeoutError for {client.ip}:{client.port} reading addr{source.connection.address} unti:{source.connection.unit}", ex)
+                    f"TimeoutError for {client.ip}:{client.port} reading \
+                        addr{source.connection.address} \
+                            unti:{source.connection.unit}", ex)
             except asyncio.CancelledError:
                 logger.error(
-                    f"[SourcePool][client_reader]Got CancelledError close client connection {client.ip}:{client.port}")
+                    f"[SourcePool][client_reader]Got CancelledError close \
+                        client connection {client.ip}:{client.port}")
                 # if client.connected:
                 #     client.close()
                 break
         logger.info(
-                    f"[SourcePool][client_reader] reader stopped  {client.ip}:{client.port}")
+                    f"[SourcePool][client_reader] reader \
+                        stopped  {client.ip}:{client.port}")
 
     def readAllOneTime(self):
         for source in self.sources:
