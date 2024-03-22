@@ -17,6 +17,7 @@ import asyncio
 from pymodbus.datastore import (ModbusSequentialDataBlock, ModbusServerContext,
                                 ModbusSlaveContext)
 from pymodbus.server.async_io import ModbusTcpServer, ModbusServerRequestHandler
+from pymodbus.pdu import ExceptionResponse
 
 from ...sourcepool import SourcePool, Source
 from ...consts import Formats
@@ -44,12 +45,53 @@ class ModBusServer(ModbusTcpServer):
         self.context: ModbusServerContext = self.mb_server_context_init(
             addr_map)
         # self.id_map: dict = self.addr_map_2_id_map(self.addr_map)
-        super().__init__(self.context, address=(host, port),)
-        # super().__init__(self.context, address=(host, port),
-        #                 # handler = ModbusConnectedRequestHandler
-        #                  )
+        super().__init__(
+            self.context,
+            address=(host, port),
+            response_manipulator=self.my_response_manipulator,
+            request_tracer=self.my_request_tracer
+            )
         self.handle_new_connection = self.my_handle_new_connection
     
+    
+    def my_response_manipulator(self, response):
+        # print(f'server response: {response}')
+        if response.function_code in [3, 4, 6, 16]:
+            result = response.registers
+        elif response.function_code in [1, 2, 5, 15]:
+            result = response.bits
+        else:
+            result = [None]
+        if None in result:
+            err_response = ExceptionResponse(response.function_code, 4)
+            err_response.transaction_id = response.transaction_id
+            response = err_response
+        skip_encoding = False
+        return response, skip_encoding
+    
+    
+    def my_request_tracer(self, request, *_addr):
+        '''
+    #     func 5 - write single coil
+    #     func 6 - write single register
+    #     func 15 - write multiple coils -> list[bool]
+    #     -func 16 - write multiple registers -> list[integer]
+    #     '''
+        # TODO
+        # сначала выполнить execute посмотреть на валидвцию и ошибки
+        # и потом  если ок - channel.set_channel_arg_name
+        source: Source = self.get_source(
+            request.function_code, request.address, request.slave_id)
+
+        if request.function_code in [5, 6]:
+            set_value = request.value
+            asyncio.create_task(source.write(request.value))
+        elif request.function_code == 15:
+            set_value = request.values
+        else:
+            return 
+        asyncio.create_task( source.write(set_value))
+        
     def my_handle_new_connection(self):
         return ChannelsRequestHandler(self)
     
@@ -192,30 +234,30 @@ class ChannelsRequestHandler(ModbusServerRequestHandler):
         """Call when the connection is lost or closed."""
         super().connection_lost(call_exc)
 
-    def execute(self, request, *addr):
-        '''
-        func 5 - write single coil
-        func 6 - write single register
-        func 15 - write multiple coils -> list[bool]
-        func 16 - write multiple registers -> list[integer]
-        '''
-        # TODO
-        # сначала выполнить execute посмотреть на валидвцию и ошибки
-        # и потом  если ок - channel.set_channel_arg_name
-        source: Source = self.server.get_source(
-            request.function_code, request.address, request.slave_id)
+    # def execute(self, request, *addr):
+    #     '''
+    #     func 5 - write single coil
+    #     func 6 - write single register
+    #     func 15 - write multiple coils -> list[bool]
+    #     func 16 - write multiple registers -> list[integer]
+    #     '''
+    #     # TODO
+    #     # сначала выполнить execute посмотреть на валидвцию и ошибки
+    #     # и потом  если ок - channel.set_channel_arg_name
+    #     source: Source = self.server.get_source(
+    #         request.function_code, request.address, request.slave_id)
 
-        if request.function_code in [5, 6]:
-            set_value = request.value
-            asyncio.create_task(source.write(request.value))
-        elif request.function_code == 15:
-            set_value = request.values
-        else:
-            return super().execute(request, *addr)
-            #set_value = None
-        asyncio.create_task( source.write(set_value))
+    #     if request.function_code in [5, 6]:
+    #         set_value = request.value
+    #         asyncio.create_task(source.write(request.value))
+    #     elif request.function_code == 15:
+    #         set_value = request.values
+    #     else:
+    #         return super().execute(request, *addr)
+    #         #set_value = None
+    #     asyncio.create_task( source.write(set_value))
 
-        return super().execute(request, *addr)
+    #     return super().execute(request, *addr)
 
 
 class MBServer(ModBusServer):

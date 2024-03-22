@@ -1,5 +1,6 @@
 from loguru import logger
 from abc import ABC
+import asyncio
 from pymodbus.client.tcp import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu import ExceptionResponse
@@ -31,11 +32,16 @@ class AsyncModbusClient(ABaseModbusClient):
 
     def __str__(self) -> str:
         return f'AsyncModbusClient:{self.ip}:{self.port}, status:{"OPEN" if self.connected else "CLOSE"}'
-    
+
     async def start(self):
-        await self.connection.connect()
-        logger.info(
-            f'Client ip={self.ip}:{self.port} connection {self.connection.connected}')
+        connected = False
+        while not connected:
+            connected = await self.connection.connect()
+            logger.info(
+                f'Client ip={self.ip}:{self.port} connection {self.connection.connected}')
+            if connected is False:
+                self.connection.close(reconnect=True)
+            await asyncio.sleep(1)
 
     def close(self):
         self.connection.close()
@@ -64,23 +70,24 @@ class AsyncModbusClient(ABaseModbusClient):
 
     async def read_co(self, address: int, reg_count: int, unit: int):
         result = await self._async_template_call(self.connection.read_coils,
-                                               (address, reg_count, unit))
+                                                 (address, reg_count, unit))
         return result.bits
 
     async def read_di(self, address: int, reg_count: int, unit: int):
         result = await self._async_template_call(self.connection.read_discrete_inputs,
-                                               (address, reg_count, unit))
+                                                 (address, reg_count, unit))
         return result.bits
 
     async def read_ir(self, address: int, reg_count: int, unit: int):
         result = await self._async_template_call(self.connection.read_input_registers,
-                                               (address, reg_count, unit))
+                                                 (address, reg_count, unit))
         return result.registers
+
     async def read_hr(self, address: int, reg_count: int, unit: int):
         result = await self._async_template_call(self.connection.read_holding_registers,
-                                               (address, reg_count, unit))
+                                                 (address, reg_count, unit))
         return result.registers
-    
+
     async def write_co(self, address: int, value: bool | list, unit: int):
         if isinstance(value, list):
             shift = 0
@@ -88,7 +95,7 @@ class AsyncModbusClient(ABaseModbusClient):
                 await self._async_template_call(self.connection.write_coil,
                                                 (address + shift, val, unit))
                 shift += 1
-        elif isinstance(value, bool):        
+        elif isinstance(value, bool):
             await self._async_template_call(self.connection.write_coil,
                                             (address, value, unit))
 
@@ -99,6 +106,6 @@ class AsyncModbusClient(ABaseModbusClient):
                 await self._async_template_call(self.connection.write_register,
                                                 (address + shift, val, unit))
                 shift += 1
-        elif isinstance(value, int):        
+        elif isinstance(value, int):
             await self._async_template_call(self.connection.write_register,
                                             (address, value, unit))
